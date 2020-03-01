@@ -41,7 +41,9 @@ cmake ..
 You can now open `SimpleConcurrentGPUHashTable.sln` in Visual Studio.
 
 If CMake fails to find CUDA above, then run a CMake generator for 64 bit builds:
-`cmake -G "Visual Studio 16 2019 Win64" ..`
+```
+cmake -G "Visual Studio 16 2019 Win64" ..
+```
 
 # Building
 
