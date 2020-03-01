@@ -1,3 +1,15 @@
+# About
+
+This project shows how to implement a simple hash table running on a GPU. It uses atomic operations to insert key/value
+pairs into a hash table on multiple GPU threads using linear probing. It uses CUDA for ease of development, but this can
+easily be ported to HLSL or GLSL.
+
+The hash table inserts 32 bit keys and 32 bit values. Deleting from the hash table is not implemented in this simple
+example, but it would be simple to implement deletion with tombstones. Similarly, lookups from the hash table are not
+implemented in this simple example, but would be a linear search through the table starting at the key's hash.
+
+For more information on lock free hash table design, read Preshing on Programming's [The World's Simplest Lock Free Hash Table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/).
+
 # Prerequisites
 
 * CMake
