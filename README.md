@@ -1,3 +1,5 @@
+![](screenshot.png)
+
 # About
 
 This project shows how to implement a simple hash table running on a GPU. It uses atomic operations to insert key/value
