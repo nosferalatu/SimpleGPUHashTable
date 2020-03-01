@@ -78,8 +78,9 @@ int main()
     KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
 
     // Insert all the elements; each batch is processed concurrently on the GPU
-    int num_batch_insertions = 10;
-    int num_kvs_in_batch = kNumKeyValues / num_batch_insertions;
+    const uint32_t num_batch_insertions = 16;
+    static_assert(kNumKeyValues % num_batch_insertions == 0, "needs even divisor");
+    uint32_t num_kvs_in_batch = kNumKeyValues / num_batch_insertions;
     for (int i = 0; i < num_batch_insertions; i++)
     {
         insert_hashtable(pHashTable, all_kvs.data() + i*num_kvs_in_batch, num_kvs_in_batch);
