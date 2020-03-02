@@ -16,7 +16,8 @@ __device__ uint32_t hash(uint32_t k)
 
 // Create a hash table. For linear probing, this is just an array
 // of KeyValues. The hash table is
-KeyValue* create_hashtable(uint32_t capacity) {
+KeyValue* create_hashtable(uint32_t capacity) 
+{
     // Allocate memory
     KeyValue* hashtable;
     cudaMalloc(&hashtable, sizeof(KeyValue) * kHashTableCapacity);
@@ -87,24 +88,45 @@ void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kv
     cudaFree(device_kvs);
 }
 
-std::vector<KeyValue> iterate_hashtable(KeyValue* pHashTable)
+__global__ void gpu_iterate_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t* kvs_size) 
 {
-    KeyValue* pHostHashTable;
-    cudaHostAlloc(&pHostHashTable, sizeof(KeyValue) * kHashTableCapacity, 0);
-    cudaMemcpy(pHostHashTable, pHashTable, sizeof(KeyValue) * kHashTableCapacity, cudaMemcpyDeviceToHost);
-
-    std::vector<KeyValue> kvs;
-    kvs.reserve(kHashTableCapacity);
-
-    for (uint32_t i = 0; i < kHashTableCapacity; i++)
+    unsigned int threadid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (threadid < kHashTableCapacity) 
     {
-        if (pHostHashTable[i].key != kEmpty)
+        if (pHashTable[threadid].key != kEmpty) 
         {
-            kvs.push_back(pHostHashTable[i]);
+            uint32_t size = atomicAdd(kvs_size, 1);
+            kvs[size] = pHashTable[threadid];
         }
     }
+}
 
-    cudaFree(pHostHashTable);
+std::vector<KeyValue> iterate_hashtable(KeyValue* pHashTable)
+{
+    uint32_t* device_num_kvs;
+    cudaMalloc(&device_num_kvs, sizeof(uint32_t));
+    cudaMemset(device_num_kvs, 0, sizeof(uint32_t));
+
+    KeyValue* device_kvs;
+    cudaMalloc(&device_kvs, sizeof(KeyValue) * kNumKeyValues);
+
+    int mingridsize;
+    int threadblocksize;
+    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_iterate_hashtable, 0, 0);
+
+    int gridsize = (kHashTableCapacity + threadblocksize - 1) / threadblocksize;
+    gpu_iterate_hashtable<<<gridsize, threadblocksize>>>(pHashTable, device_kvs, device_num_kvs);
+
+    uint32_t num_kvs;
+    cudaMemcpy(&num_kvs, device_num_kvs, sizeof(uint32_t), cudaMemcpyDeviceToHost);
+
+    std::vector<KeyValue> kvs;
+    kvs.resize(num_kvs);
+
+    cudaMemcpy(kvs.data(), device_kvs, sizeof(KeyValue) * num_kvs, cudaMemcpyDeviceToHost);
+
+    cudaFree(device_kvs);
+    cudaFree(device_num_kvs);
 
     return kvs;
 }
