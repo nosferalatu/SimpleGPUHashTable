@@ -57,4 +57,3 @@ You can build within Visual Studio, or from the command line with:
 ```
 cmake --build . --config Release
 ```
-
