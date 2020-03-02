@@ -7,7 +7,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 string(APPEND CMAKE_CUDA_FLAGS " -gencode arch=compute_35,code=sm_35")
 
-set(SOURCE_FILES src/test.cpp src/linearprobing.h src/linearprobing.cu)
+set(SOURCE_FILES src/main.cpp src/test.cpp src/linearprobing.h src/linearprobing.cu)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 

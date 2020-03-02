@@ -79,7 +79,8 @@ void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kv
     float milliseconds = 0;
     cudaEventElapsedTime(&milliseconds, start, stop);
     float seconds = milliseconds / 1000.0f;
-    printf("    GPU inserted %d items in %f ms (%f million keys/second)\n", num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
+    printf("    GPU inserted %d items in %f ms (%f million keys/second)\n", 
+        num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
 
     cudaFree(device_kvs);
 }
