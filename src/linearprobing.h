@@ -1,7 +1,5 @@
 #pragma once
 
-#define ASSERT(X) if (!(X)) __debugbreak();
-
 struct KeyValue
 {
     uint32_t key;
@@ -11,6 +9,8 @@ struct KeyValue
 const uint32_t kHashTableCapacity = 128 * 1024 * 1024;
 
 const uint32_t kNumKeyValues = kHashTableCapacity / 2;
+
+const uint32_t kEmpty = 0xffffffff;
 
 KeyValue* create_hashtable(uint32_t initialCapacity);
 

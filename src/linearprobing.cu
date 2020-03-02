@@ -14,6 +14,20 @@ __device__ uint32_t hash(uint32_t k)
     return k & (kHashTableCapacity-1);
 }
 
+// Create a hash table. For linear probing, this is just an array
+// of KeyValues. The hash table is
+KeyValue* create_hashtable(uint32_t capacity) {
+    // Allocate memory
+    KeyValue* hashtable;
+    cudaMalloc(&hashtable, sizeof(KeyValue) * kHashTableCapacity);
+
+    // Initialize hash table to empty
+    static_assert(kEmpty == 0xffffffff, "memset expected kEmpty=0xffffffff");
+    cudaMemset(hashtable, 0xff, sizeof(KeyValue) * kHashTableCapacity);
+
+    return hashtable;
+}
+
 __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, unsigned int numkvs)
 {
     unsigned int threadid = blockIdx.x*blockDim.x + threadIdx.x;
@@ -25,8 +39,8 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
 
         while (true)
         {
-            uint32_t prev = atomicCAS(&hashtable[slot].key, 0, key);
-            if (prev == 0 || prev == key)
+            uint32_t prev = atomicCAS(&hashtable[slot].key, kEmpty, key);
+            if (prev == kEmpty || prev == key)
             {
                 hashtable[slot].value = value;
                 break;
@@ -37,18 +51,6 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
     }
 }
  
-KeyValue* create_hashtable(uint32_t capacity)
-{
-    // Allocate memory
-    KeyValue* hashtable;
-    cudaMalloc(&hashtable, sizeof(KeyValue)*kHashTableCapacity);
-    
-    // Initialize hash table to empty
-    cudaMemset(hashtable, 0, sizeof(KeyValue)*kHashTableCapacity);
-
-    return hashtable;
-}
-
 void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kvs)
 {
     // Copy the keyvalues to the GPU
@@ -68,7 +70,7 @@ void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kv
 
     cudaEventRecord(start);
 
-    // Hash table insertion
+    // Insert all the keys into the hash table
     int gridsize = ((uint32_t)num_kvs + threadblocksize - 1) / threadblocksize;
     gpu_hashtable_insert<<<gridsize, threadblocksize>>>(pHashTable, device_kvs, (uint32_t)num_kvs);
 
@@ -96,7 +98,7 @@ std::vector<KeyValue> iterate_hashtable(KeyValue* pHashTable)
 
     for (uint32_t i = 0; i < kHashTableCapacity; i++)
     {
-        if (pHostHashTable[i].key != 0)
+        if (pHostHashTable[i].key != kEmpty)
         {
             kvs.push_back(pHostHashTable[i]);
         }

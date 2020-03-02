@@ -8,11 +8,13 @@
 #include "random"
 #include "linearprobing.h"
 
+// Create random keys/values in the range [0, kEmpty)
+// kEmpty is used to indicate an empty slot
 std::vector<KeyValue> generate_random_keyvalues()
 {
     std::random_device rd;
     std::mt19937 gen(rd()); // mersenne_twister_engine
-    std::uniform_int_distribution<uint32_t> dis(1, 0xffffffff);    // 0 is reserved for empty keys
+    std::uniform_int_distribution<uint32_t> dis(0, kEmpty-1);
 
     std::vector<KeyValue> kvs;
     kvs.reserve(kNumKeyValues);
