@@ -2,9 +2,14 @@
 
 # About
 
-This project shows how to implement a simple hash table running on a GPU. It uses atomic operations to insert key/value
-pairs into a hash table on multiple GPU threads using linear probing. It uses CUDA for ease of development, but this can
-easily be ported to HLSL or GLSL.
+This project shows how to implement a simple GPU hash table. Thanks to the high bandwidth and massive parallelism of
+GPU's, the result is a high performance hash table capable of insertion rates in the hundreds of millions of key/value
+pairs a second.
+
+The code achieves an average insertion rate of 309 million key/second on my development laptop with an NVIDIA GTX 1060.
+
+This code uses atomic operations to insert key/value pairs into a lock free hash table on multiple GPU threads using linear
+probing. It uses CUDA for ease of development, but this can easily be ported to HLSL or GLSL.
 
 The hash table inserts 32 bit keys and 32 bit values. Deleting from the hash table is not implemented in this simple
 example, but it would be simple to implement deletion with tombstones. Similarly, lookups from the hash table are not
