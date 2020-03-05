@@ -10,16 +10,16 @@
 
 // Create random keys/values in the range [0, kEmpty)
 // kEmpty is used to indicate an empty slot
-std::vector<KeyValue> generate_random_keyvalues() 
+std::vector<KeyValue> generate_random_keyvalues(uint32_t numkvs)
 {
     std::random_device rd;
     std::mt19937 gen(rd());  // mersenne_twister_engine
     std::uniform_int_distribution<uint32_t> dis(0, kEmpty - 1);
 
     std::vector<KeyValue> kvs;
-    kvs.reserve(kNumKeyValues);
+    kvs.reserve(numkvs);
 
-    for (int i = 0; i < kNumKeyValues; i++) 
+    for (uint32_t i = 0; i < numkvs; i++)
     {
         uint32_t rand0 = dis(gen);
         uint32_t rand1 = dis(gen);
@@ -27,6 +27,19 @@ std::vector<KeyValue> generate_random_keyvalues()
     }
 
     return kvs;
+}
+
+// return numshuffledkvs random items from kvs
+std::vector<KeyValue> shuffle_keyvalues(std::vector<KeyValue> kvs, uint32_t numshuffledkvs)
+{
+    std::random_shuffle(kvs.begin(), kvs.end());
+
+    std::vector<KeyValue> shuffled_kvs;
+    shuffled_kvs.resize(numshuffledkvs);
+
+    std::copy(kvs.begin(), kvs.begin() + numshuffledkvs, shuffled_kvs.begin());
+
+    return shuffled_kvs;
 }
 
 LARGE_INTEGER start_timer() 
@@ -52,16 +65,23 @@ double get_elapsed_time(LARGE_INTEGER start)
     return milliseconds;
 }
 
-void test_unordered_map(std::vector<KeyValue> all_kvs) 
+void test_unordered_map(std::vector<KeyValue> insert_kvs, std::vector<KeyValue> delete_kvs) 
 {
     LARGE_INTEGER timer = start_timer();
 
-    printf("Testing insertion into std::unordered_map...\n");
+    printf("Timing std::unordered_map...\n");
 
     {
         std::unordered_map<uint32_t, uint32_t> kvs_map;
-        for (auto& kv : all_kvs) {
+        for (auto& kv : insert_kvs) 
+        {
             kvs_map[kv.key] = kv.value;
+        }
+        for (auto& kv : delete_kvs)
+        {
+            auto i = kvs_map.find(kv.key);
+            if (i != kvs_map.end())
+                kvs_map.erase(i);
         }
     }
 
@@ -71,45 +91,57 @@ void test_unordered_map(std::vector<KeyValue> all_kvs)
         milliseconds, kNumKeyValues / seconds / 1000000.0f);
 }
 
-void test_correctness(std::vector<KeyValue>, std::vector<KeyValue>);
+void test_correctness(std::vector<KeyValue>, std::vector<KeyValue>, std::vector<KeyValue>);
 
 int main() 
 {
-    printf("Testing insertion of %d elements into GPU hash table...\n", kNumKeyValues);
-
-    // Initialize keyvalue pairs with random numbers
-    std::vector<KeyValue> all_kvs = generate_random_keyvalues();
-
-    // Begin test
-    LARGE_INTEGER timer = start_timer();
-
-    KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
-
-    // Insert all the elements; each batch is processed concurrently on the GPU
-    const uint32_t num_batch_insertions = 16;
-    static_assert(kNumKeyValues % num_batch_insertions == 0, "needs even divisor");
-    uint32_t num_kvs_in_batch = kNumKeyValues / num_batch_insertions;
-    for (int i = 0; i < num_batch_insertions; i++) 
+    while (true)
     {
-        insert_hashtable(pHashTable, all_kvs.data() + i * num_kvs_in_batch, num_kvs_in_batch);
+        // Initialize keyvalue pairs with random numbers
+        std::vector<KeyValue> insert_kvs = generate_random_keyvalues(kNumKeyValues);
+        std::vector<KeyValue> delete_kvs = shuffle_keyvalues(insert_kvs, kNumKeyValues / 2);
+
+        printf("Testing insertion/deletion of %d/%d elements into GPU hash table...\n",
+            (uint32_t)insert_kvs.size(), (uint32_t)delete_kvs.size());
+
+        // Begin test
+        LARGE_INTEGER timer = start_timer();
+
+        KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
+
+        // Insert items into the hash table
+        const uint32_t num_insert_batches = 16;
+        uint32_t num_inserts_per_batch = (uint32_t)insert_kvs.size() / num_insert_batches;
+        for (uint32_t i = 0; i < num_insert_batches; i++)
+        {
+            insert_hashtable(pHashTable, insert_kvs.data() + i * num_inserts_per_batch, num_inserts_per_batch);
+        }
+
+        // Delete items from the hash table
+        const uint32_t num_delete_batches = 8;
+        uint32_t num_deletes_per_batch = (uint32_t)delete_kvs.size() / num_delete_batches;
+        for (uint32_t i = 0; i < num_delete_batches; i++)
+        {
+            delete_hashtable(pHashTable, delete_kvs.data() + i * num_deletes_per_batch, num_deletes_per_batch);
+        }
+
+        // Get all the key-values from the hash table
+        std::vector<KeyValue> kvs = iterate_hashtable(pHashTable);
+
+        destroy_hashtable(pHashTable);
+
+        // Summarize results
+        double milliseconds = get_elapsed_time(timer);
+        double seconds = milliseconds / 1000.0f;
+        printf("Total time (including memory copies, readback, etc): %f ms (%f million keys/second)\n", milliseconds,
+            kNumKeyValues / seconds / 1000000.0f);
+
+        test_unordered_map(insert_kvs, delete_kvs);
+
+        test_correctness(insert_kvs, delete_kvs, kvs);
+
+        printf("Success\n");
     }
-
-    // Get all the key-values from the hash table
-    std::vector<KeyValue> kvs = iterate_hashtable(pHashTable);
-
-    destroy_hashtable(pHashTable);
-
-    // Summarize results
-    double milliseconds = get_elapsed_time(timer);
-    double seconds = milliseconds / 1000.0f;
-    printf("Total time (including memory copies, readback, etc): %f ms (%f million keys/second)\n", milliseconds,
-           kNumKeyValues / seconds / 1000000.0f);
-
-    test_unordered_map(all_kvs);
-
-    test_correctness(all_kvs, kvs);
-
-    printf("Success\n");
 
     return 0;
 }

@@ -29,6 +29,7 @@ KeyValue* create_hashtable(uint32_t capacity)
     return hashtable;
 }
 
+// Insert the key/values in kvs into the hashtable
 __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, unsigned int numkvs)
 {
     unsigned int threadid = blockIdx.x*blockDim.x + threadIdx.x;
@@ -44,7 +45,7 @@ __global__ void gpu_hashtable_insert(KeyValue* hashtable, const KeyValue* kvs, u
             if (prev == kEmpty || prev == key)
             {
                 hashtable[slot].value = value;
-                break;
+                return;
             }
 
             slot = (slot + 1) & (kHashTableCapacity-1);
@@ -88,15 +89,145 @@ void insert_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kv
     cudaFree(device_kvs);
 }
 
-__global__ void gpu_iterate_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t* kvs_size) 
+// Lookup keys in the hashtable, and return the values
+__global__ void gpu_hashtable_lookup(KeyValue* hashtable, KeyValue* kvs, unsigned int numkvs)
+{
+    unsigned int threadid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (threadid < kHashTableCapacity)
+    {
+        uint32_t key = kvs[threadid].key;
+        uint32_t slot = hash(key);
+
+        while (true)
+        {
+            if (hashtable[slot].key == key)
+            {
+                kvs[threadid].value = hashtable[slot].value;
+                return;
+            }
+            if (hashtable[slot].key == kEmpty)
+            {
+                kvs[threadid].value = kEmpty;
+                return;
+            }
+            slot = (slot + 1) & (kHashTableCapacity - 1);
+        }
+    }
+}
+
+void lookup_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t num_kvs)
+{
+    // Copy the keyvalues to the GPU
+    KeyValue* device_kvs;
+    cudaMalloc(&device_kvs, sizeof(KeyValue) * num_kvs);
+    cudaMemcpy(device_kvs, kvs, sizeof(KeyValue) * num_kvs, cudaMemcpyHostToDevice);
+
+    // Have CUDA calculate the thread block size
+    int mingridsize;
+    int threadblocksize;
+    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_hashtable_insert, 0, 0);
+
+    // Create events for GPU timing
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+
+    // Insert all the keys into the hash table
+    int gridsize = ((uint32_t)num_kvs + threadblocksize - 1) / threadblocksize;
+    gpu_hashtable_insert << <gridsize, threadblocksize >> > (pHashTable, device_kvs, (uint32_t)num_kvs);
+
+    cudaEventRecord(stop);
+
+    cudaEventSynchronize(stop);
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    float seconds = milliseconds / 1000.0f;
+    printf("    GPU lookup %d items in %f ms (%f million keys/second)\n",
+        num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
+
+    cudaFree(device_kvs);
+}
+
+// Delete each key in kvs from the hash table, if the key exists
+// A deleted key is left in the hash table, but its value is set to kEmpty
+// Deleted keys are not reused; once a key is assigned a slot, it never moves
+__global__ void gpu_hashtable_delete(KeyValue* hashtable, const KeyValue* kvs, unsigned int numkvs)
+{
+    unsigned int threadid = blockIdx.x * blockDim.x + threadIdx.x;
+    if (threadid < kHashTableCapacity)
+    {
+        uint32_t key = kvs[threadid].key;
+        uint32_t slot = hash(key);
+
+        while (true)
+        {
+            if (hashtable[slot].key == key)
+            {
+                hashtable[slot].value = kEmpty;
+                return;
+            }
+            if (hashtable[slot].key == kEmpty)
+            {
+                return;
+            }
+            slot = (slot + 1) & (kHashTableCapacity - 1);
+        }
+    }
+}
+
+void delete_hashtable(KeyValue* pHashTable, const KeyValue* kvs, uint32_t num_kvs)
+{
+    // Copy the keyvalues to the GPU
+    KeyValue* device_kvs;
+    cudaMalloc(&device_kvs, sizeof(KeyValue) * num_kvs);
+    cudaMemcpy(device_kvs, kvs, sizeof(KeyValue) * num_kvs, cudaMemcpyHostToDevice);
+
+    // Have CUDA calculate the thread block size
+    int mingridsize;
+    int threadblocksize;
+    cudaOccupancyMaxPotentialBlockSize(&mingridsize, &threadblocksize, gpu_hashtable_insert, 0, 0);
+
+    // Create events for GPU timing
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start);
+
+    // Insert all the keys into the hash table
+    int gridsize = ((uint32_t)num_kvs + threadblocksize - 1) / threadblocksize;
+    gpu_hashtable_delete<< <gridsize, threadblocksize >> > (pHashTable, device_kvs, (uint32_t)num_kvs);
+
+    cudaEventRecord(stop);
+
+    cudaEventSynchronize(stop);
+
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    float seconds = milliseconds / 1000.0f;
+    printf("    GPU delete %d items in %f ms (%f million keys/second)\n",
+        num_kvs, milliseconds, num_kvs / (double)seconds / 1000000.0f);
+
+    cudaFree(device_kvs);
+}
+
+// Iterate over every item in the hashtable; return non-empty key/values
+__global__ void gpu_iterate_hashtable(KeyValue* pHashTable, KeyValue* kvs, uint32_t* kvs_size)
 {
     unsigned int threadid = blockIdx.x * blockDim.x + threadIdx.x;
     if (threadid < kHashTableCapacity) 
     {
         if (pHashTable[threadid].key != kEmpty) 
         {
-            uint32_t size = atomicAdd(kvs_size, 1);
-            kvs[size] = pHashTable[threadid];
+            uint32_t value = pHashTable[threadid].value;
+            if (value != kEmpty)
+            {
+                uint32_t size = atomicAdd(kvs_size, 1);
+                kvs[size] = pHashTable[threadid];
+            }
         }
     }
 }
@@ -131,6 +262,7 @@ std::vector<KeyValue> iterate_hashtable(KeyValue* pHashTable)
     return kvs;
 }
 
+// Free the memory of the hashtable
 void destroy_hashtable(KeyValue* pHashTable)
 {
     cudaFree(pHashTable);

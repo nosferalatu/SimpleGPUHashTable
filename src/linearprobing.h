@@ -16,6 +16,10 @@ KeyValue* create_hashtable(uint32_t initialCapacity);
 
 void insert_hashtable(KeyValue* hashtable, const KeyValue* kvs, uint32_t num_kvs);
 
+void lookup_hashtable(KeyValue* hashtable, KeyValue* kvs, uint32_t num_kvs);
+
+void delete_hashtable(KeyValue* hashtable, const KeyValue* kvs, uint32_t num_kvs);
+
 std::vector<KeyValue> iterate_hashtable(KeyValue* hashtable);
 
 void destroy_hashtable(KeyValue* hashtable);
