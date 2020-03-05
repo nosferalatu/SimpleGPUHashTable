@@ -20,7 +20,7 @@ Resizing the hash table is not implemented (it's a *simple* hash table!)
 For more information on the lock free hash table design, read:
 * Preshing on Programming's [The World's Simplest Lock Free Hash
 Table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/)
-* Cliff Click's slides on (A Lock-Free Wait-Free Hash Table)[https://web.stanford.edu/class/ee380/Abstracts/070221_LockFreeHash.pdf]
+* Cliff Click's slides on [A Lock-Free Wait-Free Hash Table](https://web.stanford.edu/class/ee380/Abstracts/070221_LockFreeHash.pdf)
 
 # Prerequisites
 
