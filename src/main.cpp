@@ -5,7 +5,7 @@
 #include "unordered_map"
 #include "unordered_set"
 #include "vector"
-#include "windows.h"
+#include "chrono"
 #include "linearprobing.h"
 
 // Create random keys/values in the range [0, kEmpty)
@@ -42,32 +42,25 @@ std::vector<KeyValue> shuffle_keyvalues(std::vector<KeyValue> kvs, uint32_t nums
     return shuffled_kvs;
 }
 
-LARGE_INTEGER start_timer() 
+using Time = std::chrono::time_point<std::chrono::steady_clock>;
+
+Time start_timer() 
 {
-    LARGE_INTEGER timer;
-    QueryPerformanceCounter(&timer);
-    return timer;
+    return std::chrono::high_resolution_clock::now();
 }
 
-double get_elapsed_time(LARGE_INTEGER start) 
+double get_elapsed_time(Time start) 
 {
-    LARGE_INTEGER end;
-    QueryPerformanceCounter(&end);
+    Time end = std::chrono::high_resolution_clock::now();
 
-    LARGE_INTEGER frequency;
-    QueryPerformanceFrequency(&frequency);
-
-    LARGE_INTEGER elapsed;
-    elapsed.QuadPart = end.QuadPart - start.QuadPart;
-    elapsed.QuadPart *= 1000000;
-    double milliseconds = elapsed.QuadPart / (double)frequency.QuadPart / 1000;
-
-    return milliseconds;
+    std::chrono::duration<double> d = end - start;
+    std::chrono::microseconds us = std::chrono::duration_cast<std::chrono::microseconds>(d);
+    return us.count() / 1000.0f;
 }
 
 void test_unordered_map(std::vector<KeyValue> insert_kvs, std::vector<KeyValue> delete_kvs) 
 {
-    LARGE_INTEGER timer = start_timer();
+    Time timer = start_timer();
 
     printf("Timing std::unordered_map...\n");
 
@@ -105,7 +98,7 @@ int main()
             (uint32_t)insert_kvs.size(), (uint32_t)delete_kvs.size());
 
         // Begin test
-        LARGE_INTEGER timer = start_timer();
+        Time timer = start_timer();
 
         KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
 
