@@ -31,6 +31,8 @@ This has been tested on Windows with Visual Studio Community 2019 on a machine w
 An easy way to get CMake is to open a Visual Studio command prompt (in Windows, run "x64 Native Tools Command Prompt for
 VS 2019"; that will put CMake in your path).
 
+This should work on other CUDA-supported platforms, but I have not tested this.
+
 # Cloning
 
 ```
