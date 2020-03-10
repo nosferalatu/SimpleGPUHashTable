@@ -10,10 +10,8 @@
 
 // Create random keys/values in the range [0, kEmpty)
 // kEmpty is used to indicate an empty slot
-std::vector<KeyValue> generate_random_keyvalues(uint32_t numkvs)
+std::vector<KeyValue> generate_random_keyvalues(std::mt19937& rnd, uint32_t numkvs)
 {
-    std::random_device rd;
-    std::mt19937 gen(rd());  // mersenne_twister_engine
     std::uniform_int_distribution<uint32_t> dis(0, kEmpty - 1);
 
     std::vector<KeyValue> kvs;
@@ -21,8 +19,8 @@ std::vector<KeyValue> generate_random_keyvalues(uint32_t numkvs)
 
     for (uint32_t i = 0; i < numkvs; i++)
     {
-        uint32_t rand0 = dis(gen);
-        uint32_t rand1 = dis(gen);
+        uint32_t rand0 = dis(rnd);
+        uint32_t rand1 = dis(rnd);
         kvs.push_back(KeyValue{rand0, rand1});
     }
 
@@ -30,9 +28,9 @@ std::vector<KeyValue> generate_random_keyvalues(uint32_t numkvs)
 }
 
 // return numshuffledkvs random items from kvs
-std::vector<KeyValue> shuffle_keyvalues(std::vector<KeyValue> kvs, uint32_t numshuffledkvs)
+std::vector<KeyValue> shuffle_keyvalues(std::mt19937& rnd, std::vector<KeyValue> kvs, uint32_t numshuffledkvs)
 {
-    std::random_shuffle(kvs.begin(), kvs.end());
+    std::shuffle(kvs.begin(), kvs.end(), rnd);
 
     std::vector<KeyValue> shuffled_kvs;
     shuffled_kvs.resize(numshuffledkvs);
@@ -88,16 +86,25 @@ void test_correctness(std::vector<KeyValue>, std::vector<KeyValue>, std::vector<
 
 int main() 
 {
+    // To recreate the same random numbers across runs of the program, set seed to a specific
+    // number instead of a number from random_device
+    std::random_device rd;
+    uint32_t seed = rd();
+    std::mt19937 rnd(seed);  // mersenne_twister_engine
+
+    printf("Random number generator seed = %u\n", seed);
+
     while (true)
     {
-        // Initialize keyvalue pairs with random numbers
-        std::vector<KeyValue> insert_kvs = generate_random_keyvalues(kNumKeyValues);
-        std::vector<KeyValue> delete_kvs = shuffle_keyvalues(insert_kvs, kNumKeyValues / 2);
+        printf("Initializing keyvalue pairs with random numbers...\n");
 
+        std::vector<KeyValue> insert_kvs = generate_random_keyvalues(rnd, kNumKeyValues);
+        std::vector<KeyValue> delete_kvs = shuffle_keyvalues(rnd, insert_kvs, kNumKeyValues / 2);
+
+        // Begin test
         printf("Testing insertion/deletion of %d/%d elements into GPU hash table...\n",
             (uint32_t)insert_kvs.size(), (uint32_t)delete_kvs.size());
 
-        // Begin test
         Time timer = start_timer();
 
         KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
