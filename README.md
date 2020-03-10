@@ -39,10 +39,10 @@ This is how you insert a vector of `KeyValue` pairs into the hash table and then
 ```cpp
     std::vector<KeyValue> things_to_insert = { {0,1}, {1,2}, {2,3}, {3,4} };
 
-    KeyValue* pHashTable2 = create_hashtable(kHashTableCapacity);
-    insert_hashtable(pHashTable2, things_to_insert.data(), (uint32_t)things_to_insert.size());
-    std::vector<KeyValue> result = iterate_hashtable(pHashTable2);
-    destroy_hashtable(pHashTable2);
+    KeyValue* pHashTable = create_hashtable();
+    insert_hashtable(pHashTable, things_to_insert.data(), (uint32_t)things_to_insert.size());
+    std::vector<KeyValue> result = iterate_hashtable(pHashTable);
+    destroy_hashtable(pHashTable);
 ```
 
 After that runs, the vectors `things_to_insert` and `result` should be the same, but possibly in a different order.
