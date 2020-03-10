@@ -14,9 +14,8 @@ __device__ uint32_t hash(uint32_t k)
     return k & (kHashTableCapacity-1);
 }
 
-// Create a hash table. For linear probing, this is just an array
-// of KeyValues. The hash table is
-KeyValue* create_hashtable(uint32_t capacity) 
+// Create a hash table. For linear probing, this is just an array of KeyValues
+KeyValue* create_hashtable() 
 {
     // Allocate memory
     KeyValue* hashtable;

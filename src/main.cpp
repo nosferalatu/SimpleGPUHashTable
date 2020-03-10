@@ -107,7 +107,7 @@ int main()
 
         Time timer = start_timer();
 
-        KeyValue* pHashTable = create_hashtable(kHashTableCapacity);
+        KeyValue* pHashTable = create_hashtable();
 
         // Insert items into the hash table
         const uint32_t num_insert_batches = 16;

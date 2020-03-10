@@ -12,7 +12,7 @@ const uint32_t kNumKeyValues = kHashTableCapacity / 2;
 
 const uint32_t kEmpty = 0xffffffff;
 
-KeyValue* create_hashtable(uint32_t initialCapacity);
+KeyValue* create_hashtable();
 
 void insert_hashtable(KeyValue* hashtable, const KeyValue* kvs, uint32_t num_kvs);
 

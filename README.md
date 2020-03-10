@@ -5,7 +5,8 @@
 This project shows how to implement a simple GPU hash table. Thanks to the high bandwidth and massive parallelism of
 GPU's, the result is a high performance hash table capable of hundreds of millions of operations per second.
 
-The code achieves an average insertion rate of 309 million key/second on my development laptop with an NVIDIA GTX 1060.
+The code achieves an average insertion rate of 326 million key/second on my development laptop with an NVIDIA GTX 1060,
+measured by inserting 64 million elements.
 
 The code implements a lock free hash table using linear probing. Concurrent inserts, deletes, and lookups are supported by
 this hash table. The hash table works on 32 bit keys and 32 bit values (although 0xffffffff is reserved for both keys
@@ -25,6 +26,26 @@ For more information on the lock free hash table design, read:
 * Preshing on Programming's [The World's Simplest Lock Free Hash
 Table](https://preshing.com/20130605/the-worlds-simplest-lock-free-hash-table/)
 * Cliff Click's slides on [A Lock-Free Wait-Free Hash Table](https://web.stanford.edu/class/ee380/Abstracts/070221_LockFreeHash.pdf)
+
+# How To Use
+
+If you build and run the executable, it enters an infinite loop of inserting and deleting random numbers into the
+GPU hash table and verifying that the results are correct. The seed used to generate random numbers changes every time
+you run the executable, but you can set the seed to a specific value in code if you'd like to reproduce results across
+runs.
+
+This is how you insert a vector of `KeyValue` pairs into the hash table and then retrieve all the `KeyValue` pairs back:
+
+```cpp
+    std::vector<KeyValue> things_to_insert = { {0,1}, {1,2}, {2,3}, {3,4} };
+
+    KeyValue* pHashTable2 = create_hashtable(kHashTableCapacity);
+    insert_hashtable(pHashTable2, things_to_insert.data(), (uint32_t)things_to_insert.size());
+    std::vector<KeyValue> result = iterate_hashtable(pHashTable2);
+    destroy_hashtable(pHashTable2);
+```
+
+After that runs, the vectors `things_to_insert` and `result` should be the same, but possibly in a different order.
 
 # Prerequisites
 
