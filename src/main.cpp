@@ -40,7 +40,7 @@ std::vector<KeyValue> shuffle_keyvalues(std::mt19937& rnd, std::vector<KeyValue>
     return shuffled_kvs;
 }
 
-using Time = std::chrono::time_point<std::chrono::steady_clock>;
+using Time = std::chrono::time_point<std::chrono::high_resolution_clock>;
 
 Time start_timer() 
 {
