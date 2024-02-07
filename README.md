@@ -1,5 +1,12 @@
 ![](screenshot.png)
 
+# Enhancements:
+
+- Dual-Key Support: Expanded the hash table's ability to store pairs with two keys, facilitating complex & sophisticated data-structures like graph edges.
+
+- 64-bit MurmurHash2 Algorithm: Adapted the MurmurHash2 hashing algorithm to efficiently manage and resolve dual-key entries.
+
+- CUDA_CHECKER Utility: Implements checks for CUDA operations like memory allocation and data transfer, enhancing error handling and debugging.
 # About
 
 This project shows how to implement a simple GPU hash table. Thanks to the high bandwidth and massive parallelism of
